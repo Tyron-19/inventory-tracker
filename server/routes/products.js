@@ -82,4 +82,17 @@ router.put('/:id', verifyToken, async (req, res) => {
   }
 });
 
+// Deleting a product
+router.delete('/:id', verifyToken, async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    await pool.request()
+      .input('id', sql.Int, req.params.id)
+      .query('DELETE FROM Products WHERE Id=@id');
+    res.status(204).send();
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
 module.exports = router;
