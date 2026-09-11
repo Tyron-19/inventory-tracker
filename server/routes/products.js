@@ -24,4 +24,35 @@ router.post('/', verifyToken, async (req, res) => {
   }
 });
 
+router.get('/', verifyToken, async (req, res) => {
+  const { search } = req.query;
+  try {
+    const pool = await poolPromise;
+    const request = pool.request();
+    let query = 'SELECT * FROM Products';
+    if (search) {
+      request.input('search', sql.NVarChar, `%${search}%`);
+      query += ' WHERE Name LIKE @search OR SKU LIKE @search';
+    }
+    query += ' ORDER BY UpdatedAt DESC';
+    const result = await request.query(query);
+    res.json(result.recordset);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+router.get('/:id', verifyToken, async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('id', sql.Int, req.params.id)
+      .query('SELECT * FROM Products WHERE Id = @id');
+    if (!result.recordset[0]) return res.status(404).json({ message: 'Not found' });
+    res.json(result.recordset[0]);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
 module.exports = router;
