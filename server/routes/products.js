@@ -1,3 +1,4 @@
+// Creating a product
 const express = require('express');
 const { sql, poolPromise } = require('../db');
 const verifyToken = require('../middleware/auth');
@@ -24,6 +25,7 @@ router.post('/', verifyToken, async (req, res) => {
   }
 });
 
+// Retrieving a product
 router.get('/', verifyToken, async (req, res) => {
   const { search } = req.query;
   try {
@@ -48,6 +50,31 @@ router.get('/:id', verifyToken, async (req, res) => {
     const result = await pool.request()
       .input('id', sql.Int, req.params.id)
       .query('SELECT * FROM Products WHERE Id = @id');
+    if (!result.recordset[0]) return res.status(404).json({ message: 'Not found' });
+    res.json(result.recordset[0]);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// Updating a product
+router.put('/:id', verifyToken, async (req, res) => {
+  const { sku, name, category, quantity, reorderLevel, unitPrice } = req.body;
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('id', sql.Int, req.params.id)
+      .input('sku', sql.NVarChar, sku)
+      .input('name', sql.NVarChar, name)
+      .input('category', sql.NVarChar, category)
+      .input('quantity', sql.Int, quantity)
+      .input('reorderLevel', sql.Int, reorderLevel)
+      .input('unitPrice', sql.Decimal(10, 2), unitPrice)
+      .query(`UPDATE Products SET SKU=@sku, Name=@name, Category=@category,
+              Quantity=@quantity, ReorderLevel=@reorderLevel, UnitPrice=@unitPrice,
+              UpdatedAt=SYSUTCDATETIME()
+              OUTPUT INSERTED.*
+              WHERE Id=@id`);
     if (!result.recordset[0]) return res.status(404).json({ message: 'Not found' });
     res.json(result.recordset[0]);
   } catch (err) {
